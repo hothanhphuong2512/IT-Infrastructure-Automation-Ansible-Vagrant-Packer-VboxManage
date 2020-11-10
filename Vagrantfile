@@ -54,7 +54,7 @@ Vagrant.configure("2") do |config|
     end
     todonginx.vm.hostname = "todonginx.bcit.local"
     todonginx.vm.network "private_network", ip: "192.168.150.30"
-    todonginx.vm.network "forwarded_port", guest: 80, host: 8080
+    todonginx.vm.network "forwarded_port", guest: 80, host: 8888
     todonginx.vm.provision "file", source: "./files/nginx.conf", destination: "/tmp/nginx.conf"
     todonginx.vm.provision "shell", inline: <<-SHELL
       
