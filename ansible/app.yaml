@@ -1,0 +1,73 @@
+---
+- hosts: todoapp
+  vars:
+    todoapp_user: todoapp
+  tasks:
+    - name: Making dure the todoapp user exist
+      become: yes
+      user:
+        name: "{{todoapp_user}}"
+    - name: Make sure firewall port is open
+      become: yes
+      firewalld:
+        port: 8080/tcp
+        state: enabled
+        permanent: yes
+        immediate: yes
+    - name: Provision the Nodejs repo
+      get_url:
+        url: https://rpm.nodesource.com/setup_14.x
+        dest: /tmp/nodejs_setup_script
+      register: nodejs_setup_task
+    - name: Run nodejs setup script 
+      when: nodejs_setup_task.changed
+      become: yes
+      shell: bash /tmp/nodejs_setup_script
+    - name: Make sure that nodejs is installed
+      become: yes
+      package:
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - git
+        - nodejs
+    - name: Make sure the app files exist
+      become: yes
+      become_user: "{{ todoapp_user }}"
+      git:
+        repo: https://github.com/timoguic/ACIT4640-todo-app.git
+        dest: /home/{{ todoapp_user }}/app
+    - name: Make sure npm is installed
+      become: yes
+      become_user: "{{ todoapp_user }}"
+      shell: npm install
+      args:
+        chdir: /home/{{todoapp_user}}/app
+    - name: Make sure config/database.js is provisioned
+      become: yes
+      become_user: "{{ todoapp_user }}"
+      replace:
+        path: /home/{{ todoapp_user }}/app/config/database.js
+        regexp: 'localhost/CHANGEME'
+        replace: '192.168.150.20/ACIT4640'
+      register: database_js_task
+    - name: Provision the todoapp service in systemd
+      become: yes
+      template:
+        src: todoapp.service
+        dest: /etc/systemd/system/todoapp.service
+    - name: Enable and start todoapp in systemd
+      become: yes
+      systemd:
+        name: todoapp
+        state: started
+        enabled: yes
+        daemon_reload: yes
+    - name: Make sure todoapp service is restarted when changing config/database.js
+      when: database_js_task.changed
+      become: yes
+      systemd:
+        name: todoapp
+        state: restarted
+
+        

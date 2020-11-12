@@ -1,0 +1,30 @@
+---
+- hosts: todowww
+  become: yes
+  tasks:
+    - name: Make sure nginx is installed
+      package:
+        name: "{{item}}"
+        state: present
+      with_items:
+        - git
+        - nginx
+    - name: make sure /app can be written by admin
+      file:
+        path: /app
+        state: directory
+        owner: admin
+    - name: Make sure the static files are available locally
+      git:
+        repo: https://github.com/timoguic/ACIT4640-todo-app.git
+        dest: /app
+    - name: Provision nginx.conf
+      copy:
+        src: ./files/nginx.conf
+        dest: /etc/nginx/nginx.conf
+      register: nginx_conf_task
+    - name: Make sure nginx is started and enabled
+      systemd:
+        name: nginx
+        state: started
+        enabled: yes
